@@ -1,0 +1,25 @@
+[
+  {
+    "name": "广州医科大学附属第三医院（广医三院）",
+    "city": "Guangzhou",
+    "languageHint": "zh",
+    "urls": [
+      "http://www.gy3y.com/index.html"
+    ]
+  },
+  {
+    "name": "广东省妇幼保健院（省妇幼）",
+    "city": "Guangzhou",
+    "languageHint": "zh",
+    "urls": []
+  },
+  {
+    "name": "广州中医药大学第一附属医院（广中医一附院）",
+    "city": "Guangzhou",
+    "languageHint": "zh",
+    "urls": [
+      "https://www.gztcm.com.cn/"
+    ]
+  }
+]
+
