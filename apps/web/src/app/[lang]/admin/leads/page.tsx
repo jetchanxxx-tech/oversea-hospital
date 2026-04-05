@@ -1,5 +1,6 @@
 import { getPublicEnv } from "@/lib/config";
 import { httpJson } from "@/lib/http";
+import { isLang, type Lang } from "@/lib/i18n";
 
 type LeadRow = {
   id: number;
@@ -13,7 +14,9 @@ type LeadRow = {
 
 type LeadListResponse = { items: LeadRow[] };
 
-export default async function AdminLeadsPage() {
+export default async function AdminLeadsPage({ params }: { params: Promise<{ lang: string }> }) {
+  const { lang } = await params;
+  const l: Lang = isLang(lang) ? lang : "en";
   const { apiBaseUrl } = getPublicEnv();
   const adminKey = process.env.ADMIN_API_KEY ?? "";
   const url = new URL("/admin/leads?limit=200", apiBaseUrl);
@@ -31,7 +34,7 @@ export default async function AdminLeadsPage() {
           </h1>
           <div className="muted">Latest 200 submissions.</div>
         </div>
-        <a className="btn btnPrimary" href="./export" style={{ marginLeft: "auto" }}>
+        <a className="btn btnPrimary" href={`/${l}/admin/leads/export`} style={{ marginLeft: "auto" }}>
           Export CSV
         </a>
       </div>
