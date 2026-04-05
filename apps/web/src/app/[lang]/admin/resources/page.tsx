@@ -1,5 +1,7 @@
 import { getPublicEnv } from "@/lib/config";
 import { httpJson } from "@/lib/http";
+import { isLang, type Lang } from "@/lib/i18n";
+import { getAdminDict } from "@/lib/admin-i18n";
 
 type Resource = {
   id: number;
@@ -17,10 +19,15 @@ type Resource = {
 type ResourceSearchResponse = { items: Resource[] };
 
 export default async function AdminResourcesPage({
+  params,
   searchParams
 }: {
+  params: Promise<{ lang: string }>;
   searchParams: Promise<{ q?: string; type?: string }>;
 }) {
+  const { lang } = await params;
+  const l: Lang = isLang(lang) ? lang : "en";
+  const t = getAdminDict(l);
   const sp = await searchParams;
   const q = sp.q?.trim() ?? "";
   const type = sp.type?.trim() ?? "";
@@ -40,17 +47,17 @@ export default async function AdminResourcesPage({
     <div className="grid" style={{ gap: 12 }}>
       <div className="grid" style={{ gap: 6 }}>
         <h1 className="h2" style={{ fontSize: 26 }}>
-          Resources
+          {t.resourcesTitle}
         </h1>
-        <div className="muted">Internal partner resources. Search by name / address / contact.</div>
+        <div className="muted">{t.resourcesSubtitle}</div>
       </div>
 
       <form className="card">
         <div className="cardInner" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end" }}>
           <div className="field" style={{ minWidth: 240 }}>
-            <div className="label">Type</div>
+            <div className="label">{t.resourcesType}</div>
             <select name="type" defaultValue={type} className="select">
-              <option value="">All types</option>
+              <option value="">{l === "zh" ? "全部类型" : "All types"}</option>
               <option value="Hotel">Hotel</option>
               <option value="Restaurant">Restaurant</option>
               <option value="TransportAirport">Transport - Airport</option>
@@ -59,11 +66,16 @@ export default async function AdminResourcesPage({
             </select>
           </div>
           <div className="field" style={{ flex: 1, minWidth: 260 }}>
-            <div className="label">Keyword</div>
-            <input name="q" defaultValue={q} placeholder="Search by name/address/contact" className="input" />
+            <div className="label">{t.resourcesKeyword}</div>
+            <input
+              name="q"
+              defaultValue={q}
+              placeholder={l === "zh" ? "按名称/地址/联系人搜索" : "Search by name/address/contact"}
+              className="input"
+            />
           </div>
           <button type="submit" className="btn btnPrimary" style={{ minWidth: 140 }}>
-            Search
+            {t.search}
           </button>
         </div>
       </form>
@@ -72,7 +84,7 @@ export default async function AdminResourcesPage({
         <table className="table">
           <thead>
             <tr>
-              {["ID", "Type", "Name", "City", "Status", "Contact"].map((h) => (
+              {[t.tableId, t.tableType, t.tableName, t.tableCity, t.tableStatus, t.tableContact].map((h) => (
                 <th key={h}>{h}</th>
               ))}
             </tr>
@@ -99,7 +111,7 @@ export default async function AdminResourcesPage({
             {data.items.length === 0 ? (
               <tr>
                 <td colSpan={6} className="muted">
-                  No resources.
+                  {t.noResources}
                 </td>
               </tr>
             ) : null}

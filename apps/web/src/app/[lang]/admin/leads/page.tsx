@@ -1,6 +1,7 @@
 import { getPublicEnv } from "@/lib/config";
 import { httpJson } from "@/lib/http";
 import { isLang, type Lang } from "@/lib/i18n";
+import { getAdminDict } from "@/lib/admin-i18n";
 
 type LeadRow = {
   id: number;
@@ -17,6 +18,7 @@ type LeadListResponse = { items: LeadRow[] };
 export default async function AdminLeadsPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   const l: Lang = isLang(lang) ? lang : "en";
+  const t = getAdminDict(l);
   const { apiBaseUrl } = getPublicEnv();
   const adminKey = process.env.ADMIN_API_KEY ?? "";
   const url = new URL("/admin/leads?limit=200", apiBaseUrl);
@@ -30,12 +32,12 @@ export default async function AdminLeadsPage({ params }: { params: Promise<{ lan
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div className="grid" style={{ gap: 4 }}>
           <h1 className="h2" style={{ fontSize: 26 }}>
-            Leads
+            {t.leadsTitle}
           </h1>
-          <div className="muted">Latest 200 submissions.</div>
+          <div className="muted">{t.leadsSubtitle}</div>
         </div>
         <a className="btn btnPrimary" href={`/${l}/admin/leads/export`} style={{ marginLeft: "auto" }}>
-          Export CSV
+          {t.leadsExport}
         </a>
       </div>
 
@@ -43,7 +45,7 @@ export default async function AdminLeadsPage({ params }: { params: Promise<{ lan
         <table className="table">
           <thead>
             <tr>
-              {["ID", "Name", "Email", "Passport", "IM", "Created"].map((h) => (
+              {[t.tableId, t.tableName, t.tableEmail, t.tablePassport, t.tableIm, t.tableCreated].map((h) => (
                 <th key={h}>{h}</th>
               ))}
             </tr>
@@ -64,7 +66,7 @@ export default async function AdminLeadsPage({ params }: { params: Promise<{ lan
             {data.items.length === 0 ? (
               <tr>
                 <td colSpan={6} className="muted">
-                  No leads.
+                  {l === "zh" ? "暂无留资" : "No leads."}
                 </td>
               </tr>
             ) : null}

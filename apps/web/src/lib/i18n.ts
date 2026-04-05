@@ -1,4 +1,4 @@
-export const supportedLangs = ["en", "ru", "es"] as const;
+export const supportedLangs = ["en", "ru", "es", "zh"] as const;
 export type Lang = (typeof supportedLangs)[number];
 
 export function isLang(value: string): value is Lang {

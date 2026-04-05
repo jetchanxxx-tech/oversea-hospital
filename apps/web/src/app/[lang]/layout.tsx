@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { isLang, type Lang } from "@/lib/i18n";
+import { getAdminDict } from "@/lib/admin-i18n";
 
 export default async function LangLayout({
   children,
@@ -10,6 +11,7 @@ export default async function LangLayout({
 }) {
   const { lang } = await params;
   const l: Lang = isLang(lang) ? lang : "en";
+  const t = getAdminDict(l);
   return (
     <>
       <header className="header">
@@ -17,12 +19,12 @@ export default async function LangLayout({
           <nav className="nav">
             <a className="brand" href={`/${l}`}>
               <span className="brandMark" aria-hidden="true" />
-              <span>Oversea Medical</span>
+              <span>{t.brand}</span>
             </a>
             <div className="navLinks" aria-label="Main navigation">
-              <a href={`/${l}/hospitals`}>Hospitals</a>
-              <a href={`/${l}/policies`}>Policies</a>
-              <a href={`/${l}/admin`}>Dashboard</a>
+              <a href={`/${l}/hospitals`}>{t.navHospitals}</a>
+              <a href={`/${l}/policies`}>{t.navPolicies}</a>
+              <a href={`/${l}/admin`}>{t.navDashboard}</a>
             </div>
             <div className="navRight">
               <div className="langPills" aria-label="Language">
@@ -35,9 +37,12 @@ export default async function LangLayout({
                 <a className="pill" href="/es">
                   ES
                 </a>
+                <a className="pill" href="/zh">
+                  中文
+                </a>
               </div>
               <a className="btn btnAccent" href={`/${l}/lead`}>
-                Book Free Assessment
+                {t.navCta}
               </a>
             </div>
           </nav>
@@ -50,19 +55,14 @@ export default async function LangLayout({
         <div className="container">
           <div className="footerGrid">
             <div className="grid" style={{ gap: 10 }}>
-              <div style={{ fontWeight: 900 }}>Disclaimer</div>
+              <div style={{ fontWeight: 900 }}>{t.disclaimerTitle}</div>
               <div className="muted" style={{ maxWidth: "90ch" }}>
-                We provide medical coordination services and information for international patients. We are not a medical
-                institution and do not provide medical diagnosis. Final medical decisions are made by licensed hospitals and
-                doctors.
+                {t.disclaimerBody}
               </div>
             </div>
             <div className="grid" style={{ gap: 10 }}>
-              <div style={{ fontWeight: 900 }}>Privacy</div>
-              <div className="muted">
-                Please share passport and medical records only when necessary. You can request data deletion by contacting our
-                support.
-              </div>
+              <div style={{ fontWeight: 900 }}>{t.privacyTitle}</div>
+              <div className="muted">{t.privacyBody}</div>
             </div>
           </div>
         </div>
