@@ -6,6 +6,28 @@ if [[ "${EUID}" -ne 0 ]]; then
   exit 1
 fi
 
+cmd_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+port_in_use() {
+  local port="$1"
+  if cmd_exists ss; then
+    ss -lnt 2>/dev/null | awk '{print $4}' | grep -E "(:|\\.)${port}\$" -q
+    return
+  fi
+  if cmd_exists netstat; then
+    netstat -lnt 2>/dev/null | awk '{print $4}' | grep -E "(:|\\.)${port}\$" -q
+    return
+  fi
+  return 1
+}
+
+is_local_host() {
+  local host="$1"
+  [[ "${host}" == "127.0.0.1" || "${host}" == "localhost" || "${host}" == "::1" ]]
+}
+
 prompt() {
   local var_name="$1"
   local label="$2"
@@ -67,6 +89,16 @@ prompt API_PORT "Business API port (NestJS)" "3001"
 prompt CMS_PORT "CMS port (Strapi)" "1337"
 
 echo
+echo "Pre-check ports:"
+for p in "${MYSQL_PORT}" "${WEB_PORT}" "${API_PORT}" "${CMS_PORT}" "80"; do
+  if port_in_use "${p}"; then
+    echo "- Port ${p}: IN USE"
+  else
+    echo "- Port ${p}: free"
+  fi
+done
+
+echo
 echo "Install plan:"
 echo "- INSTALL_ROOT=${INSTALL_ROOT}"
 echo "- PROJECT_DIR=${PROJECT_DIR}"
@@ -105,37 +137,70 @@ echo
 echo "== Step 3: Install Node.js (CentOS 7.9 note) =="
 echo "CentOS 7 has old glibc. New Node LTS may not be available. Defaulting to Node.js 16.x (EOL) for compatibility."
 echo "If you can upgrade OS (recommended), use Node 20+."
-if confirm "Install Node.js 16.x from NodeSource?" 1; then
-  curl -fsSL https://rpm.nodesource.com/setup_16.x | bash -
-  yum -y install nodejs
+if cmd_exists node; then
+  echo "Node.js already installed: $(node -v)"
+else
+  if confirm "Install Node.js 16.x from NodeSource?" 1; then
+    curl -fsSL https://rpm.nodesource.com/setup_16.x | bash -
+    yum -y install nodejs
+  fi
 fi
 
 echo
 echo "== Step 4: Install MySQL 8 (local service) =="
-if confirm "Install and configure MySQL 8 locally on this machine?" 1; then
-  if ! rpm -qa | grep -q mysql80-community-release; then
-    yum -y install https://repo.mysql.com/mysql80-community-release-el7-11.noarch.rpm || true
+MYSQL_EXISTS=0
+MYSQL_RUNNING=0
+if cmd_exists mysqld || rpm -qa | grep -q mysql-community-server; then
+  MYSQL_EXISTS=1
+fi
+if port_in_use "${MYSQL_PORT}"; then
+  MYSQL_RUNNING=1
+fi
+if cmd_exists systemctl; then
+  if systemctl is-active mysqld >/dev/null 2>&1; then
+    MYSQL_RUNNING=1
   fi
-  yum -y install mysql-community-server mysql || true
-  systemctl enable mysqld
-  systemctl start mysqld
+fi
+if pgrep -x mysqld >/dev/null 2>&1; then
+  MYSQL_RUNNING=1
+fi
 
-  MYSQL_TMP_PWD=""
-  if [[ -f /var/log/mysqld.log ]]; then
-    MYSQL_TMP_PWD="$(grep -oP 'temporary password.*: \K.*' /var/log/mysqld.log | tail -n 1 || true)"
-  fi
-
-  if [[ -n "${MYSQL_TMP_PWD}" ]]; then
-    mysql --connect-expired-password -uroot -p"${MYSQL_TMP_PWD}" <<SQL
-ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
-SQL
+if ! is_local_host "${MYSQL_HOST}"; then
+  echo "MYSQL_HOST is not local (${MYSQL_HOST}). Skipping local MySQL installation."
+else
+  if [[ "${MYSQL_RUNNING}" == "1" ]]; then
+    echo "MySQL appears to be running on port ${MYSQL_PORT}. Skipping MySQL installation."
   else
-    mysql -uroot <<SQL || true
+    if confirm "Install and configure MySQL 8 locally on this machine?" 1; then
+      if ! rpm -qa | grep -q mysql80-community-release; then
+        yum -y install https://repo.mysql.com/mysql80-community-release-el7-11.noarch.rpm || true
+      fi
+      yum -y install mysql-community-server mysql || true
+      systemctl enable mysqld
+      systemctl start mysqld
+
+      MYSQL_TMP_PWD=""
+      if [[ -f /var/log/mysqld.log ]]; then
+        MYSQL_TMP_PWD="$(grep -oP 'temporary password.*: \K.*' /var/log/mysqld.log | tail -n 1 || true)"
+      fi
+
+      if [[ -n "${MYSQL_TMP_PWD}" ]]; then
+        mysql --connect-expired-password -uroot -p"${MYSQL_TMP_PWD}" <<SQL
 ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
 SQL
+      else
+        mysql -uroot <<SQL || true
+ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
+SQL
+      fi
+    fi
   fi
+fi
 
-  mysql -uroot -p"${MYSQL_ROOT_PASSWORD}" <<SQL
+if confirm "Ensure MySQL databases/users exist (requires root password)?" 1; then
+  if cmd_exists mysql; then
+    set +e
+    mysql -h"${MYSQL_HOST}" -P"${MYSQL_PORT}" -uroot -p"${MYSQL_ROOT_PASSWORD}" <<SQL
 CREATE DATABASE IF NOT EXISTS \`${MYSQL_CMS_DB}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 CREATE DATABASE IF NOT EXISTS \`${MYSQL_API_DB}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 CREATE USER IF NOT EXISTS '${MYSQL_APP_USER}'@'%' IDENTIFIED BY '${MYSQL_APP_PASSWORD}';
@@ -143,13 +208,28 @@ GRANT ALL PRIVILEGES ON \`${MYSQL_CMS_DB}\`.* TO '${MYSQL_APP_USER}'@'%';
 GRANT ALL PRIVILEGES ON \`${MYSQL_API_DB}\`.* TO '${MYSQL_APP_USER}'@'%';
 FLUSH PRIVILEGES;
 SQL
+    rc=$?
+    set -e
+    if [[ "${rc}" -ne 0 ]]; then
+      echo "Could not connect as MySQL root. Skipping database/user initialization."
+    fi
+  else
+    echo "mysql client not found. Skipping database/user initialization."
+  fi
 fi
 
 echo
 echo "== Step 5: Nginx reverse proxy =="
-mkdir -p /etc/nginx/conf.d
+if port_in_use 80; then
+  echo "Port 80 is already in use. Skipping Nginx configuration."
+  echo "You can manually proxy:"
+  echo "- / -> 127.0.0.1:${WEB_PORT}"
+  echo "- /api/ -> 127.0.0.1:${API_PORT}"
+  echo "- /cms/ -> 127.0.0.1:${CMS_PORT}"
+else
+  mkdir -p /etc/nginx/conf.d
 
-cat > /etc/nginx/conf.d/oversea.conf <<NGINX
+  cat > /etc/nginx/conf.d/oversea.conf <<NGINX
 server {
   listen 80;
   server_name ${DOMAIN};
@@ -179,9 +259,10 @@ server {
 }
 NGINX
 
-nginx -t
-systemctl enable nginx
-systemctl restart nginx
+  nginx -t
+  systemctl enable nginx
+  systemctl restart nginx
+fi
 
 echo
 echo "== Step 6: Prepare app environment file =="
@@ -284,4 +365,3 @@ echo "  1) cd ${PROJECT_DIR}/apps/api && npm ci && npm run build"
 echo "  2) cd ${PROJECT_DIR}/apps/cms && npm ci && npm run build"
 echo "  3) cd ${PROJECT_DIR}/apps/web && npm ci && npm run build"
 echo "  4) systemctl start oversea-api oversea-cms oversea-web"
-
