@@ -4,6 +4,15 @@
 - 目标：上线一个可对外投放的多语言站点（EN/RU/ES），可展示广州/深圳医疗资源，并引导用户留资；管理端可由非IT同事维护内容与资源库、查看/导出线索。
 - 原则：先用成熟开源框架快速上线与试运营，运营一段时间后再评估迁移/自研。
 
+## 1.1 当前 MVP 实现状态（以代码仓库为准）
+- 已上线（Web + API + MySQL）
+  - 前台：医院列表/详情、政策页、留资向导（提交成功）
+  - 管理后台：中文默认（/zh/admin），留资列表、资源库查询、导出 CSV（中文表头 + UTF-8 BOM）
+  - 安全：管理端使用 `ADMIN_API_KEY` 作为最小鉴权（不是账号密码体系）
+  - 网络：留资提交走同源 `/api/public/leads` 代理，不需要把 API 3001 暴露公网
+- 待做（第二阶段）
+  - apps/cms（Strapi）内容模型与多语言内容管理（目前医院数据为 API 演示数据）
+
 ## 2. 技术栈（组合A，数据库改为 MySQL）
 - Public Web：Next.js（SSR/SSG，多语言 SEO）
 - CMS：Strapi（内容模型、多语言、媒体、发布）
@@ -15,7 +24,7 @@
 
 ## 3. MVP 范围（必须交付）
 ### 3.1 前台（Public Web）
-- 多语言路由：/en /ru /es，支持切换语言
+- 多语言路由：/en /ru /es（对外投放主语言），/zh（用于管理后台默认中文）
 - 页面
   - 首页：价值主张、服务范围、信任背书、核心 CTA（免费评估）
   - 医院列表：按城市（广州/深圳）过滤 + 关键词搜索（MVP可先前端过滤或Strapi查询）
@@ -60,6 +69,26 @@
 - apps/api：NestJS（业务API）
 - scripts：初始化/抓取/导入脚本
 - seed：演示数据（JSON）
+
+## 4.1 线上运行方式（裸机脚本）
+- 使用 [scripts/service.sh](file:///d:/dev/%E5%8C%BB%E9%99%A2/oversea/scripts/service.sh) 管理进程与日志
+- 常用命令
+  - 安装依赖：`./scripts/service.sh install`
+  - 编译：`./scripts/service.sh build`
+  - 导入演示医院：`./scripts/service.sh seed:demo`
+  - 启动/停止/重启：`./scripts/service.sh start|stop|restart`
+  - 查看状态：`./scripts/service.sh status`
+  - 查看日志：`./scripts/service.sh logs:web|logs:api|logs:cms`
+- 端口被占用时强制回收（谨慎使用）：`FORCE=1 ./scripts/service.sh restart`
+
+## 4.2 环境变量（.env）
+- 位置：仓库根目录 `.env`（脚本会加载）
+- 必填（生产环境不要用默认值）
+  - `MYSQL_HOST` `MYSQL_PORT` `MYSQL_USER` `MYSQL_PASSWORD`
+  - `API_DB_NAME`（或 `MYSQL_DATABASE`）
+  - `ADMIN_API_KEY`：管理端鉴权密钥（不要使用 `change-me`）
+- 推荐
+  - `API_BASE_URL=http://127.0.0.1:3001`（Web 在服务端访问 API 的地址）
 
 ## 5. 本地开发（建议流程）
 ### 5.1 安装 MySQL（不使用 Docker）
