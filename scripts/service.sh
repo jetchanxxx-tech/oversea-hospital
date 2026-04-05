@@ -18,6 +18,7 @@ fi
 WEB_PORT="${WEB_PORT:-3000}"
 API_PORT="${API_PORT:-3001}"
 CMS_PORT="${CMS_PORT:-1337}"
+FORCE="${FORCE:-0}"
 
 API_PID_FILE="${RUN_DIR}/api.pid"
 WEB_PID_FILE="${RUN_DIR}/web.pid"
@@ -36,6 +37,44 @@ port_in_use() {
     return
   fi
   return 1
+}
+
+pid_of_port() {
+  local port="$1"
+  if command -v ss >/dev/null 2>&1; then
+    ss -lntp 2>/dev/null | grep -E "(:|\\.)${port}[[:space:]]" | sed -n 's/.*pid=\([0-9]\+\).*/\1/p' | head -n 1
+    return
+  fi
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"${port}" -sTCP:LISTEN -t 2>/dev/null | head -n 1
+    return
+  fi
+}
+
+wait_port_free() {
+  local port="$1"
+  for _ in $(seq 1 30); do
+    if ! port_in_use "${port}"; then
+      return 0
+    fi
+    sleep 0.2
+  done
+  return 1
+}
+
+kill_pid_soft() {
+  local pid="$1"
+  if [[ -z "${pid}" ]]; then
+    return 0
+  fi
+  kill "${pid}" >/dev/null 2>&1 || true
+  for _ in $(seq 1 20); do
+    if ! is_running_pid "${pid}"; then
+      return 0
+    fi
+    sleep 0.3
+  done
+  kill -9 "${pid}" >/dev/null 2>&1 || true
 }
 
 is_running_pid() {
@@ -62,8 +101,20 @@ start_one() {
     return 0
   fi
   if port_in_use "${port}"; then
-    echo "${name} port ${port} already in use, skip start"
-    return 0
+    local port_pid
+    port_pid="$(pid_of_port "${port}")"
+    if [[ "${FORCE}" == "1" ]] && [[ -n "${port_pid}" ]]; then
+      echo "${name} port ${port} in use by pid=${port_pid}, killing (FORCE=1)"
+      kill_pid_soft "${port_pid}"
+      wait_port_free "${port}" || true
+    else
+      if [[ -n "${port_pid}" ]]; then
+        echo "${name} port ${port} already in use by pid=${port_pid}, skip start (set FORCE=1 to kill)"
+      else
+        echo "${name} port ${port} already in use, skip start (set FORCE=1 to kill)"
+      fi
+      return 0
+    fi
   fi
   nohup "$@" > "${LOG_DIR}/${name}.log" 2>&1 &
   echo $! > "${pid_file}"
@@ -73,9 +124,22 @@ start_one() {
 stop_one() {
   local name="$1"
   local pid_file="$2"
+  local port="${3:-}"
   local pid
   pid="$(read_pid "${pid_file}")"
   if [[ -z "${pid}" ]]; then
+    if [[ -n "${port}" ]] && port_in_use "${port}"; then
+      local port_pid
+      port_pid="$(pid_of_port "${port}")"
+      if [[ "${FORCE}" == "1" ]] && [[ -n "${port_pid}" ]]; then
+        echo "${name} no pid file but port ${port} in use by pid=${port_pid}, killing (FORCE=1)"
+        kill_pid_soft "${port_pid}"
+        wait_port_free "${port}" || true
+        return 0
+      fi
+      echo "${name} not running (no pid file) but port ${port} is in use"
+      return 0
+    fi
     echo "${name} not running (no pid file)"
     return 0
   fi
@@ -84,18 +148,12 @@ stop_one() {
     echo "${name} not running (stale pid file removed)"
     return 0
   fi
-  kill "${pid}" >/dev/null 2>&1 || true
-  for _ in $(seq 1 20); do
-    if ! is_running_pid "${pid}"; then
-      rm -f "${pid_file}"
-      echo "${name} stopped"
-      return 0
-    fi
-    sleep 0.3
-  done
-  kill -9 "${pid}" >/dev/null 2>&1 || true
+  kill_pid_soft "${pid}"
   rm -f "${pid_file}"
-  echo "${name} killed"
+  if [[ -n "${port}" ]]; then
+    wait_port_free "${port}" || true
+  fi
+  echo "${name} stopped"
 }
 
 status_one() {
@@ -148,9 +206,9 @@ start_all() {
 }
 
 stop_all() {
-  stop_one "web" "${WEB_PID_FILE}"
-  stop_one "api" "${API_PID_FILE}"
-  stop_one "cms" "${CMS_PID_FILE}"
+  stop_one "web" "${WEB_PID_FILE}" "${WEB_PORT}"
+  stop_one "api" "${API_PID_FILE}" "${API_PORT}"
+  stop_one "cms" "${CMS_PID_FILE}" "${CMS_PORT}"
 }
 
 status_all() {
@@ -203,8 +261,7 @@ case "${cmd}" in
     ;;
   *)
     echo "Usage: $0 {install|build|seed:demo|start|stop|restart|status|logs:api|logs:web|logs:cms}"
-    echo "Env: ENV_FILE=${ENV_FILE} RUN_DIR=${RUN_DIR} LOG_DIR=${LOG_DIR} WEB_PORT=${WEB_PORT} API_PORT=${API_PORT} CMS_PORT=${CMS_PORT}"
+    echo "Env: ENV_FILE=${ENV_FILE} RUN_DIR=${RUN_DIR} LOG_DIR=${LOG_DIR} WEB_PORT=${WEB_PORT} API_PORT=${API_PORT} CMS_PORT=${CMS_PORT} FORCE=${FORCE}"
     exit 1
     ;;
 esac
-
