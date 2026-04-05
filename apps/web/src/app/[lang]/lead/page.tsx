@@ -1,11 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { getPublicEnv } from "@/lib/config";
+import { useState } from "react";
 import type { LeadCreateInput } from "@/lib/types";
 
 export default function LeadPage() {
-  const { apiBaseUrl } = useMemo(() => getPublicEnv(), []);
   const [status, setStatus] = useState<"idle" | "submitting" | "ok" | "error">("idle");
   const [message, setMessage] = useState<string>("");
   const [step, setStep] = useState<number>(0);
@@ -46,7 +44,7 @@ export default function LeadPage() {
     setMessage("");
 
     try {
-      const res = await fetch(new URL("/public/leads", apiBaseUrl), {
+      const res = await fetch("/api/public/leads", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
