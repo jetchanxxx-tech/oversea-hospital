@@ -1,7 +1,18 @@
 import { getPool } from "./db";
+import { schemaSql } from "./schema";
 
 async function run() {
   const pool = getPool();
+  
+  // Ensure tables exist before inserting
+  const statements = schemaSql
+    .split(";")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  for (const stmt of statements) {
+    await pool.query(stmt);
+  }
+
   const items = [
     {
       id: "gy3y",
