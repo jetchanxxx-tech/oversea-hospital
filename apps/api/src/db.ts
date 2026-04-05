@@ -1,4 +1,4 @@
-import mysql, { type Pool } from "mysql2/promise";
+import { createPool, type Pool } from "mysql2/promise";
 import { loadEnv } from "./env";
 
 let pool: Pool | null = null;
@@ -6,7 +6,7 @@ let pool: Pool | null = null;
 export function getPool(): Pool {
   if (pool) return pool;
   const env = loadEnv();
-  pool = mysql.createPool({
+  pool = createPool({
     host: env.mysql.host,
     port: env.mysql.port,
     user: env.mysql.user,
