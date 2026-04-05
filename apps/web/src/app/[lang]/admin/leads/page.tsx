@@ -23,40 +23,44 @@ export default async function AdminLeadsPage() {
   });
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-        <h1 style={{ margin: 0 }}>Leads</h1>
-        <a href="./export" style={{ marginLeft: "auto" }}>
+    <div className="grid" style={{ gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div className="grid" style={{ gap: 4 }}>
+          <h1 className="h2" style={{ fontSize: 26 }}>
+            Leads
+          </h1>
+          <div className="muted">Latest 200 submissions.</div>
+        </div>
+        <a className="btn btnPrimary" href="./export" style={{ marginLeft: "auto" }}>
           Export CSV
         </a>
       </div>
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+
+      <div className="card tableWrap">
+        <table className="table">
           <thead>
             <tr>
               {["ID", "Name", "Email", "Passport", "IM", "Created"].map((h) => (
-                <th key={h} style={{ textAlign: "left", borderBottom: "1px solid #eee", padding: "8px 6px" }}>
-                  {h}
-                </th>
+                <th key={h}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {data.items.map((x) => (
               <tr key={x.id}>
-                <td style={{ borderBottom: "1px solid #f3f3f3", padding: "8px 6px" }}>{x.id}</td>
-                <td style={{ borderBottom: "1px solid #f3f3f3", padding: "8px 6px" }}>{x.name}</td>
-                <td style={{ borderBottom: "1px solid #f3f3f3", padding: "8px 6px" }}>{x.email}</td>
-                <td style={{ borderBottom: "1px solid #f3f3f3", padding: "8px 6px" }}>{x.passport}</td>
-                <td style={{ borderBottom: "1px solid #f3f3f3", padding: "8px 6px" }}>
-                  {x.imType}: {x.imHandle}
+                <td>{x.id}</td>
+                <td style={{ fontWeight: 900 }}>{x.name}</td>
+                <td>{x.email}</td>
+                <td>{x.passport}</td>
+                <td>
+                  <span className="badge">{x.imType}</span> <span>{x.imHandle}</span>
                 </td>
-                <td style={{ borderBottom: "1px solid #f3f3f3", padding: "8px 6px", color: "#666" }}>{x.createdAt}</td>
+                <td className="muted">{x.createdAt}</td>
               </tr>
             ))}
             {data.items.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: "10px 6px", color: "#666" }}>
+                <td colSpan={6} className="muted">
                   No leads.
                 </td>
               </tr>

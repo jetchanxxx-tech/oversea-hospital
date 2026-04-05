@@ -26,50 +26,57 @@ export default async function HospitalsPage({
   const data = await httpJson<HospitalListResponse>(url.toString());
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <h1 style={{ margin: 0 }}>Hospitals</h1>
-      <form style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <input
-          name="q"
-          defaultValue={q}
-          placeholder="Search hospital name"
-          style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd", minWidth: 240 }}
-        />
-        <select
-          name="city"
-          defaultValue={city}
-          style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd" }}
-        >
-          <option value="">All cities</option>
-          <option value="Guangzhou">Guangzhou</option>
-          <option value="Shenzhen">Shenzhen</option>
-        </select>
-        <button type="submit" style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #111" }}>
-          Search
-        </button>
+    <div className="grid" style={{ gap: 16 }}>
+      <div className="grid" style={{ gap: 8 }}>
+        <h1 className="h2" style={{ fontSize: 26 }}>
+          Hospitals
+        </h1>
+        <div className="muted">Search hospitals in Guangzhou / Shenzhen. Demo data for MVP.</div>
+      </div>
+
+      <form className="card">
+        <div className="cardInner" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end" }}>
+          <div className="field" style={{ flex: 2, minWidth: 220 }}>
+            <div className="label">Keyword</div>
+            <input name="q" defaultValue={q} placeholder="Search hospital name" className="input" />
+          </div>
+          <div className="field" style={{ flex: 1, minWidth: 180 }}>
+            <div className="label">City</div>
+            <select name="city" defaultValue={city} className="select">
+              <option value="">All cities</option>
+              <option value="Guangzhou">Guangzhou</option>
+              <option value="Shenzhen">Shenzhen</option>
+            </select>
+          </div>
+          <button type="submit" className="btn btnPrimary" style={{ minWidth: 140 }}>
+            Search
+          </button>
+        </div>
       </form>
 
-      <div style={{ display: "grid", gap: 10 }}>
+      <div className="grid" style={{ gap: 12 }}>
         {data.items.map((h) => (
-          <a
-            key={h.id}
-            href={`/${l}/hospitals/${encodeURIComponent(h.id)}`}
-            style={{
-              padding: 14,
-              border: "1px solid #eee",
-              borderRadius: 12,
-              color: "inherit",
-              textDecoration: "none"
-            }}
-          >
-            <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
-              <div style={{ fontWeight: 700 }}>{h.name}</div>
-              <div style={{ color: "#666" }}>{h.city}</div>
+          <a key={h.id} href={`/${l}/hospitals/${encodeURIComponent(h.id)}`} className="card">
+            <div className="cardInner">
+              <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+                <div style={{ fontWeight: 950 }}>{h.name}</div>
+                <div className="badge">{h.city}</div>
+              </div>
+              {h.summary ? (
+                <div className="muted" style={{ marginTop: 10 }}>
+                  {h.summary}
+                </div>
+              ) : null}
+              <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <div className="muted" style={{ fontSize: 13 }}>
+                  View details
+                </div>
+                <div style={{ fontWeight: 900, color: "var(--primary)" }}>Open →</div>
+              </div>
             </div>
-            {h.summary ? <div style={{ marginTop: 8, color: "#444" }}>{h.summary}</div> : null}
           </a>
         ))}
-        {data.items.length === 0 ? <div style={{ color: "#666" }}>No results.</div> : null}
+        {data.items.length === 0 ? <div className="notice">No results.</div> : null}
       </div>
     </div>
   );

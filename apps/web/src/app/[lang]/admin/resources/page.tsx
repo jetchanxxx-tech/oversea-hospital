@@ -37,52 +37,59 @@ export default async function AdminResourcesPage({
   });
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <h1 style={{ margin: 0 }}>Resources</h1>
-      <form style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <select
-          name="type"
-          defaultValue={type}
-          style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd" }}
-        >
-          <option value="">All types</option>
-          <option value="Hotel">Hotel</option>
-          <option value="Restaurant">Restaurant</option>
-          <option value="TransportAirport">Transport - Airport</option>
-          <option value="TransportCityHospital">Transport - City ↔ Hospital</option>
-          <option value="HospitalPartner">Hospital Resource</option>
-        </select>
-        <input
-          name="q"
-          defaultValue={q}
-          placeholder="Search by name/address/contact"
-          style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd", minWidth: 260 }}
-        />
-        <button type="submit" style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #111" }}>
-          Search
-        </button>
+    <div className="grid" style={{ gap: 12 }}>
+      <div className="grid" style={{ gap: 6 }}>
+        <h1 className="h2" style={{ fontSize: 26 }}>
+          Resources
+        </h1>
+        <div className="muted">Internal partner resources. Search by name / address / contact.</div>
+      </div>
+
+      <form className="card">
+        <div className="cardInner" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end" }}>
+          <div className="field" style={{ minWidth: 240 }}>
+            <div className="label">Type</div>
+            <select name="type" defaultValue={type} className="select">
+              <option value="">All types</option>
+              <option value="Hotel">Hotel</option>
+              <option value="Restaurant">Restaurant</option>
+              <option value="TransportAirport">Transport - Airport</option>
+              <option value="TransportCityHospital">Transport - City ↔ Hospital</option>
+              <option value="HospitalPartner">Hospital Resource</option>
+            </select>
+          </div>
+          <div className="field" style={{ flex: 1, minWidth: 260 }}>
+            <div className="label">Keyword</div>
+            <input name="q" defaultValue={q} placeholder="Search by name/address/contact" className="input" />
+          </div>
+          <button type="submit" className="btn btnPrimary" style={{ minWidth: 140 }}>
+            Search
+          </button>
+        </div>
       </form>
 
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div className="card tableWrap">
+        <table className="table">
           <thead>
             <tr>
               {["ID", "Type", "Name", "City", "Status", "Contact"].map((h) => (
-                <th key={h} style={{ textAlign: "left", borderBottom: "1px solid #eee", padding: "8px 6px" }}>
-                  {h}
-                </th>
+                <th key={h}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {data.items.map((x) => (
               <tr key={x.id}>
-                <td style={{ borderBottom: "1px solid #f3f3f3", padding: "8px 6px" }}>{x.id}</td>
-                <td style={{ borderBottom: "1px solid #f3f3f3", padding: "8px 6px" }}>{x.type}</td>
-                <td style={{ borderBottom: "1px solid #f3f3f3", padding: "8px 6px" }}>{x.name}</td>
-                <td style={{ borderBottom: "1px solid #f3f3f3", padding: "8px 6px" }}>{x.city}</td>
-                <td style={{ borderBottom: "1px solid #f3f3f3", padding: "8px 6px" }}>{x.status}</td>
-                <td style={{ borderBottom: "1px solid #f3f3f3", padding: "8px 6px", color: "#444" }}>
+                <td>{x.id}</td>
+                <td>
+                  <span className="badge">{x.type}</span>
+                </td>
+                <td style={{ fontWeight: 900 }}>{x.name}</td>
+                <td>{x.city}</td>
+                <td>
+                  <span className="badge">{x.status}</span>
+                </td>
+                <td className="muted">
                   {x.contactName ? `${x.contactName} ` : ""}
                   {x.contactPhone ? `${x.contactPhone} ` : ""}
                   {x.contactIm ? `${x.contactIm}` : ""}
@@ -91,7 +98,7 @@ export default async function AdminResourcesPage({
             ))}
             {data.items.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: "10px 6px", color: "#666" }}>
+                <td colSpan={6} className="muted">
                   No resources.
                 </td>
               </tr>

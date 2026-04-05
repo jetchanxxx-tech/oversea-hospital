@@ -12,20 +12,61 @@ export default async function LangLayout({
   const l: Lang = isLang(lang) ? lang : "en";
   return (
     <>
-      <header style={{ padding: 16, borderBottom: "1px solid #eee" }}>
-        <nav style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <a href={`/${l}`}>Home</a>
-          <a href={`/${l}/hospitals`}>Hospitals</a>
-          <a href={`/${l}/policies`}>Policies</a>
-          <a href={`/${l}/lead`}>Free Assessment</a>
-          <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-            <a href="/en">EN</a>
-            <a href="/ru">RU</a>
-            <a href="/es">ES</a>
-          </div>
-        </nav>
+      <header className="header">
+        <div className="container">
+          <nav className="nav">
+            <a className="brand" href={`/${l}`}>
+              <span className="brandMark" aria-hidden="true" />
+              <span>Oversea Medical</span>
+            </a>
+            <div className="navLinks" aria-label="Main navigation">
+              <a href={`/${l}/hospitals`}>Hospitals</a>
+              <a href={`/${l}/policies`}>Policies</a>
+              <a href={`/${l}/admin`}>Dashboard</a>
+            </div>
+            <div className="navRight">
+              <div className="langPills" aria-label="Language">
+                <a className="pill" href="/en">
+                  EN
+                </a>
+                <a className="pill" href="/ru">
+                  RU
+                </a>
+                <a className="pill" href="/es">
+                  ES
+                </a>
+              </div>
+              <a className="btn btnAccent" href={`/${l}/lead`}>
+                Book Free Assessment
+              </a>
+            </div>
+          </nav>
+        </div>
       </header>
-      <main style={{ padding: 16, maxWidth: 980, margin: "0 auto" }}>{children}</main>
+      <main className="main">
+        <div className="container">{children}</div>
+      </main>
+      <footer className="footer">
+        <div className="container">
+          <div className="footerGrid">
+            <div className="grid" style={{ gap: 10 }}>
+              <div style={{ fontWeight: 900 }}>Disclaimer</div>
+              <div className="muted" style={{ maxWidth: "90ch" }}>
+                We provide medical coordination services and information for international patients. We are not a medical
+                institution and do not provide medical diagnosis. Final medical decisions are made by licensed hospitals and
+                doctors.
+              </div>
+            </div>
+            <div className="grid" style={{ gap: 10 }}>
+              <div style={{ fontWeight: 900 }}>Privacy</div>
+              <div className="muted">
+                Please share passport and medical records only when necessary. You can request data deletion by contacting our
+                support.
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
     </>
   );
 }
