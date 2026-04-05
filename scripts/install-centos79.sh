@@ -10,6 +10,22 @@ cmd_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+detect_pkg_manager() {
+  if cmd_exists yum; then
+    echo "yum"
+    return
+  fi
+  if cmd_exists dnf; then
+    echo "dnf"
+    return
+  fi
+  if cmd_exists apt-get; then
+    echo "apt"
+    return
+  fi
+  echo ""
+}
+
 port_in_use() {
   local port="$1"
   if cmd_exists ss; then
@@ -70,6 +86,21 @@ confirm() {
 echo "== Oversea MVP Installer (CentOS 7.9, no Docker) =="
 echo
 
+PKG_MANAGER="$(detect_pkg_manager)"
+if [[ -z "${PKG_MANAGER}" ]]; then
+  echo "No supported package manager found (yum/dnf/apt-get)." >&2
+  exit 1
+fi
+
+if [[ -f /etc/os-release ]]; then
+  echo "OS detected:"
+  cat /etc/os-release | sed -n '1,6p'
+  echo
+fi
+
+SKIP_MYSQL_INSTALL=1
+SKIP_NGINX_INSTALL=1
+
 prompt INSTALL_ROOT "Base install directory" "/opt/oversea"
 prompt APP_USER "Linux user to run services" "oversea"
 prompt APP_GROUP "Linux group to run services" "oversea"
@@ -118,10 +149,15 @@ mkdir -p "${INSTALL_ROOT}/logs"
 
 echo
 echo "== Step 1: System packages =="
-yum -y install epel-release || true
-yum -y install curl ca-certificates git unzip tar which vim \
-  gcc-c++ make python3 \
-  nginx || true
+if [[ "${PKG_MANAGER}" == "yum" || "${PKG_MANAGER}" == "dnf" ]]; then
+  ${PKG_MANAGER} -y install epel-release || true
+  ${PKG_MANAGER} -y install curl ca-certificates git unzip tar which vim \
+    gcc-c++ make python3 || true
+else
+  apt-get update -y || true
+  apt-get install -y curl ca-certificates git unzip tar vim \
+    build-essential python3 || true
+fi
 
 echo
 echo "== Step 2: Create service user/group =="
@@ -141,8 +177,13 @@ if cmd_exists node; then
   echo "Node.js already installed: $(node -v)"
 else
   if confirm "Install Node.js 16.x from NodeSource?" 1; then
-    curl -fsSL https://rpm.nodesource.com/setup_16.x | bash -
-    yum -y install nodejs
+    if [[ "${PKG_MANAGER}" == "yum" || "${PKG_MANAGER}" == "dnf" ]]; then
+      curl -fsSL https://rpm.nodesource.com/setup_16.x | bash -
+      ${PKG_MANAGER} -y install nodejs
+    else
+      curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
+      apt-get install -y nodejs
+    fi
   fi
 fi
 
@@ -171,29 +212,7 @@ else
   if [[ "${MYSQL_RUNNING}" == "1" ]]; then
     echo "MySQL appears to be running on port ${MYSQL_PORT}. Skipping MySQL installation."
   else
-    if confirm "Install and configure MySQL 8 locally on this machine?" 1; then
-      if ! rpm -qa | grep -q mysql80-community-release; then
-        yum -y install https://repo.mysql.com/mysql80-community-release-el7-11.noarch.rpm || true
-      fi
-      yum -y install mysql-community-server mysql || true
-      systemctl enable mysqld
-      systemctl start mysqld
-
-      MYSQL_TMP_PWD=""
-      if [[ -f /var/log/mysqld.log ]]; then
-        MYSQL_TMP_PWD="$(grep -oP 'temporary password.*: \K.*' /var/log/mysqld.log | tail -n 1 || true)"
-      fi
-
-      if [[ -n "${MYSQL_TMP_PWD}" ]]; then
-        mysql --connect-expired-password -uroot -p"${MYSQL_TMP_PWD}" <<SQL
-ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
-SQL
-      else
-        mysql -uroot <<SQL || true
-ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
-SQL
-      fi
-    fi
+    echo "MySQL is not running on ${MYSQL_HOST}:${MYSQL_PORT}. Skipping MySQL installation (by request)."
   fi
 fi
 
@@ -220,48 +239,17 @@ fi
 
 echo
 echo "== Step 5: Nginx reverse proxy =="
-if port_in_use 80; then
+if ! cmd_exists nginx; then
+  echo "nginx is not installed. Skipping Nginx configuration (by request)."
+elif port_in_use 80; then
   echo "Port 80 is already in use. Skipping Nginx configuration."
   echo "You can manually proxy:"
   echo "- / -> 127.0.0.1:${WEB_PORT}"
   echo "- /api/ -> 127.0.0.1:${API_PORT}"
   echo "- /cms/ -> 127.0.0.1:${CMS_PORT}"
 else
-  mkdir -p /etc/nginx/conf.d
-
-  cat > /etc/nginx/conf.d/oversea.conf <<NGINX
-server {
-  listen 80;
-  server_name ${DOMAIN};
-
-  client_max_body_size 25m;
-
-  location / {
-    proxy_pass http://127.0.0.1:${WEB_PORT};
-    proxy_set_header Host \$host;
-    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto \$scheme;
-  }
-
-  location /api/ {
-    proxy_pass http://127.0.0.1:${API_PORT}/;
-    proxy_set_header Host \$host;
-    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto \$scheme;
-  }
-
-  location /cms/ {
-    proxy_pass http://127.0.0.1:${CMS_PORT}/;
-    proxy_set_header Host \$host;
-    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto \$scheme;
-  }
-}
-NGINX
-
-  nginx -t
-  systemctl enable nginx
-  systemctl restart nginx
+  echo "nginx is installed. Skipping Nginx configuration (by request)."
+  echo "If you want to configure nginx, remove the skip flag section and re-run."
 fi
 
 echo
